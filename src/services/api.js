@@ -19,30 +19,41 @@ export const recordingLogService = {
         try {
             const response = await api.get(`/recording-log?startDate=${startDate}&endDate=${endDate}`);
 
-            // Handle nested response structure: { success: true, data: { records: [...] } }
-            let records = response.data;
+            // Normalize possible response envelopes from API Gateway/Lambda and app backends.
+            let payload = response.data;
 
-            // Extract records array from nested structure if present
-            if (records.data && records.data.records) {
+            // Lambda proxy integrations can return data in a serialized body.
+            if (payload && typeof payload.body === 'string') {
+                try {
+                    payload = JSON.parse(payload.body);
+                } catch (parseError) {
+                    console.error('Failed to parse response body JSON:', parseError);
+                    payload = [];
+                }
+            }
+
+            // Extract records array from known response shapes.
+            let records = payload;
+            if (records && records.data && Array.isArray(records.data.records)) {
                 records = records.data.records;
-            } else if (records.records) {
+            } else if (records && Array.isArray(records.records)) {
                 records = records.records;
             } else if (!Array.isArray(records)) {
                 records = [];
             }
 
-            // Map API field names to frontend field names
-            return records.map(record => ({
-                TaskId: record.taskId,
-                AgentName: record.agentName,
-                FormName: record.formName,
-                Program: record.program,
-                DocumentumID: record.documentumId,
-                CaseNumber: record.caseNumber,
-                AppNumber: record.appNumber,
-                CaseUUID: record.caseUUID,
-                UploadedOn: record.updatedAt,
-                Status: record.status || 4, // Default to Proccessing if not provided
+            // Support both PascalCase (DynamoDB) and camelCase (existing API) field names.
+            return records.map((record) => ({
+                TaskId: record.TaskId ?? record.taskId ?? '',
+                AgentName: record.AgentName ?? record.agentName ?? '',
+                FormName: record.FormName ?? record.formName ?? '',
+                Program: record.Program ?? record.program ?? '',
+                DocumentumID: record.DocumentumID ?? record.documentumId ?? '',
+                CaseNumber: record.CaseNum ?? record.caseNum ?? record.CaseNumber ?? record.caseNumber ?? '',
+                AppNumber: record.AppNum ?? record.appNum ?? record.AppNumber ?? record.appNumber ?? '',
+                CaseUUID: record.CaseUUID ?? record.caseUUID ?? '',
+                UploadedOn: record.CreatedOn ?? record.createdOn ?? record.UpdatedAt ?? record.updatedAt ?? '',
+                Status: Number(record.Status ?? record.status ?? 4), // Default to PROCESSING if missing
             }));
         } catch (error) {
             console.error('Error fetching recording logs from DynamoDB:', error);
