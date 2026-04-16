@@ -12,6 +12,33 @@ const api = axios.create({
     },
 });
 
+const normalizeStatus = (status) => {
+    if (typeof status === 'number') {
+        return status;
+    }
+
+    const statusText = String(status || '').toLowerCase().trim();
+    switch (statusText) {
+        case 'queued':
+            return 1;
+        case 'success':
+        case 'processed':
+        case 'completed':
+            return 2;
+        case 'failure':
+        case 'failed':
+        case 'error':
+            return 3;
+        case 'processing':
+        case 'pending':
+        case 'in_progress':
+        case 'in-progress':
+            return 4;
+        default:
+            return 4;
+    }
+};
+
 export const recordingLogService = {
     // Get recording logs with date range from DynamoDB
     // Backend should handle DynamoDB query/scan with date filtering
@@ -34,7 +61,9 @@ export const recordingLogService = {
 
             // Extract records array from known response shapes.
             let records = payload;
-            if (records && records.data && Array.isArray(records.data.records)) {
+            if (records && Array.isArray(records.data)) {
+                records = records.data;
+            } else if (records && records.data && Array.isArray(records.data.records)) {
                 records = records.data.records;
             } else if (records && Array.isArray(records.records)) {
                 records = records.records;
@@ -46,14 +75,14 @@ export const recordingLogService = {
             return records.map((record) => ({
                 TaskId: record.TaskId ?? record.taskId ?? '',
                 AgentName: record.AgentName ?? record.agentName ?? '',
-                FormName: record.FormName ?? record.formName ?? '',
+                FormName: record.FormName ?? record.formName ?? record.FormId ?? record.formId ?? '',
                 Program: record.Program ?? record.program ?? '',
-                DocumentumID: record.DocumentumID ?? record.documentumId ?? '',
+                DocumentumID: record.DocumentumID ?? record.documentumId ?? record.documentumid ?? '',
                 CaseNumber: record.CaseNum ?? record.caseNum ?? record.CaseNumber ?? record.caseNumber ?? '',
                 AppNumber: record.AppNum ?? record.appNum ?? record.AppNumber ?? record.appNumber ?? '',
                 CaseUUID: record.CaseUUID ?? record.caseUUID ?? '',
                 UploadedOn: record.CreatedOn ?? record.createdOn ?? record.UpdatedAt ?? record.updatedAt ?? '',
-                Status: Number(record.Status ?? record.status ?? 4), // Default to PROCESSING if missing
+                Status: normalizeStatus(record.Status ?? record.status),
             }));
         } catch (error) {
             console.error('Error fetching recording logs from DynamoDB:', error);
