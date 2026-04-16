@@ -3,7 +3,7 @@ import DataTable from 'react-data-table-component';
 import moment from 'moment';
 import { toast } from 'react-toastify';
 import { recordingLogService } from '../services/api';
-import { formatDate, formatDateInput, getStatusDisplay, htmlEncode } from '../utils/helpers';
+import { formatDate, formatDateInput, getStatusDisplay } from '../utils/helpers';
 import FailureModal from './FailureModal';
 import './RecordingLog.css';
 
@@ -13,7 +13,7 @@ const RecordingLog = () => {
     const [startDate, setStartDate] = useState(formatDateInput(moment().subtract(7, 'days')));
     const [endDate, setEndDate] = useState(formatDateInput(moment()));
     const [showModal, setShowModal] = useState(false);
-    const [modalData, setModalData] = useState({ calabrioId: '', failureMessage: '' });
+    const [modalData] = useState({ calabrioId: '', failureMessage: '' });
 
     // Fetch data on component mount
     useEffect(() => {
